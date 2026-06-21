@@ -719,6 +719,23 @@ def advance_after_recall(block_type: str) -> None:
         start_letter_set("formal")
 
 
+def ensure_formal_finished() -> bool:
+    formal_sets = st.session_state.get("formal_sets", [])
+    if not formal_sets:
+        return False
+    if st.session_state.formal_set_index < len(formal_sets):
+        return False
+
+    if st.session_state.summary is None:
+        st.session_state.summary = compute_summary()
+    if st.session_state.saved_paths is None:
+        st.session_state.saved_paths = save_outputs()
+    if st.session_state.sync_status is None:
+        st.session_state.sync_status = sync_google_sheets()
+    st.session_state.page = "finished"
+    return True
+
+
 def compute_summary() -> dict[str, Any]:
     formal_recalls = [
         e
@@ -891,6 +908,9 @@ def main() -> None:
     inject_style()
     init_session()
     page = st.session_state.page
+    if page.startswith("formal") and ensure_formal_finished():
+        render_finished()
+        return
     if page == "intro":
         render_intro()
     elif page == "letter_practice_intro":
