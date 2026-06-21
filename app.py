@@ -917,9 +917,88 @@ def render_finished() -> None:
     st.caption(f"本地保存目录：{DATA_DIR}")
 
 
+def is_smoke_test_requested() -> bool:
+    try:
+        return st.query_params.get("smoke_test") == "1"
+    except Exception:
+        params = st.experimental_get_query_params()
+        return params.get("smoke_test", [""])[0] == "1"
+
+
+def run_smoke_test() -> None:
+    st.session_state.participant = {
+        "name": "系统测试",
+        "student_id": "TEST_AUTOMATION",
+    }
+    st.session_state.started_at = datetime.now().strftime("%Y%m%d_%H%M%S")
+    build_experiment()
+    st.session_state.math_limit_sec = 2.5
+
+    for current_set in st.session_state.formal_sets:
+        for idx, item in enumerate(current_set["math"], start=1):
+            append_event(
+                block_type="formal",
+                condition="math",
+                set_id=current_set["set_id"],
+                set_size=current_set["set_size"],
+                item_index=idx,
+                stimulus=item["stimulus"],
+                response=item["is_true"],
+                correct_response=item["is_true"],
+                accuracy=True,
+                rt_ms=500,
+                timed_out=False,
+                extra={
+                    "math_expression": item["expression"],
+                    "math_answer": item["answer"],
+                    "math_shown": item["shown"],
+                },
+            )
+            append_event(
+                block_type="formal",
+                condition="letter",
+                set_id=current_set["set_id"],
+                set_size=current_set["set_size"],
+                item_index=idx,
+                stimulus=current_set["letters"][idx - 1],
+                rt_ms=300,
+            )
+        append_event(
+            block_type="formal",
+            condition="recall",
+            set_id=current_set["set_id"],
+            set_size=current_set["set_size"],
+            stimulus="letter_recall_matrix",
+            response=current_set["letters"],
+            correct_response=current_set["letters"],
+            accuracy=True,
+            rt_ms=1000,
+            recall_target=current_set["letters"],
+            recall_response=current_set["letters"],
+            recall_correct_positions=current_set["set_size"],
+            set_perfect=True,
+        )
+
+    st.session_state.summary = compute_summary()
+    st.session_state.saved_paths = save_outputs()
+    st.session_state.sync_status = sync_google_sheets()
+    st.session_state.page = "finished"
+
+
+def render_smoke_test() -> None:
+    st.title("OSPAN Smoke Test")
+    st.write("生成一份完整的系统测试数据，用于验证结果页和 Google Sheets 保存。")
+    if st.button("生成测试结果并保存", use_container_width=True):
+        run_smoke_test()
+        st.rerun()
+
+
 def main() -> None:
     inject_style()
     init_session()
+    if is_smoke_test_requested() and st.session_state.page == "intro":
+        render_smoke_test()
+        return
     page = st.session_state.page
     if page.startswith("integration") and ensure_integration_finished():
         render_formal_intro()
