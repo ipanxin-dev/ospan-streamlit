@@ -919,7 +919,10 @@ def render_finished() -> None:
 
 def is_smoke_test_requested() -> bool:
     try:
-        return st.query_params.get("smoke_test") == "1"
+        value = st.query_params.get("smoke_test")
+        if isinstance(value, list):
+            value = value[0] if value else ""
+        return str(value) == "1"
     except Exception:
         params = st.experimental_get_query_params()
         return params.get("smoke_test", [""])[0] == "1"
