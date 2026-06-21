@@ -736,6 +736,19 @@ def ensure_formal_finished() -> bool:
     return True
 
 
+def ensure_integration_finished() -> bool:
+    integration_sets = st.session_state.get("integration_sets", [])
+    if not integration_sets:
+        return False
+    if st.session_state.integration_set_index < len(integration_sets):
+        return False
+
+    st.session_state.page = "formal_intro"
+    st.session_state.integration_item_index = 0
+    st.session_state.recall_response = []
+    return True
+
+
 def compute_summary() -> dict[str, Any]:
     formal_recalls = [
         e
@@ -908,6 +921,9 @@ def main() -> None:
     inject_style()
     init_session()
     page = st.session_state.page
+    if page.startswith("integration") and ensure_integration_finished():
+        render_formal_intro()
+        return
     if page.startswith("formal") and ensure_formal_finished():
         render_finished()
         return
