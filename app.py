@@ -85,7 +85,7 @@ def inject_style() -> None:
             font-size: 96px;
             font-weight: 800;
             text-align: center;
-            padding: 56px 0 38px;
+            padding: 44px 0 38px;
             line-height: 1;
         }
         .math-problem {
@@ -96,9 +96,15 @@ def inject_style() -> None:
             line-height: 1.22;
         }
         .center-note {
+            display: block;
             text-align: center;
             color: #4b5563;
-            margin-bottom: 18px;
+            font-size: 18px;
+            line-height: 1.6;
+            min-height: 34px;
+            padding: 8px 0 10px;
+            margin: 0 0 18px;
+            overflow: visible;
         }
         .metric-red {
             color: #dc2626;
