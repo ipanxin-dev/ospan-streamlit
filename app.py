@@ -64,7 +64,7 @@ SUMMARY_COLUMNS = [
 
 
 st.set_page_config(
-    page_title="中文 A-OSPAN",
+    page_title="记忆与注意力任务",
     layout="centered",
     initial_sidebar_state="collapsed",
 )
@@ -211,8 +211,14 @@ def build_experiment() -> None:
     st.session_state.math_limit_sec = DEFAULT_MATH_LIMIT_SEC
     st.session_state.math_practice_items = [generate_math_item() for _ in range(8)]
     st.session_state.math_practice_index = 0
+    letter_practice_sizes = [2, 2, 3, 3, 3]
     st.session_state.letter_practice_sets = [
-        {"set_id": "letter_practice_1", "set_size": 3, "letters": sample_letters(3)}
+        {
+            "set_id": f"letter_practice_{i + 1}",
+            "set_size": size,
+            "letters": sample_letters(size),
+        }
+        for i, size in enumerate(letter_practice_sizes)
     ]
     st.session_state.letter_practice_index = 0
     st.session_state.integration_sets = [
@@ -379,10 +385,13 @@ def math_accuracy_percent() -> float:
 
 
 def render_intro() -> None:
-    st.title("中文 A-OSPAN")
-    st.subheader("记忆与注意力任务")
+    st.title("记忆与注意力任务")
     st.write("本任务用于测量您的记忆与注意力。您需要同时进行简单的数学判断，并记忆出现的字母顺序。")
-    st.info("请按照要求完成任务，不要猜测正确答案。正式实验中数学正确率应保持在 85% 或以上。")
+    st.info(
+        "请在安静环境中完成，双手放在键盘附近，快速且准确地反应。\n\n"
+        "练习阶段将不进入正式分析。\n\n"
+        "数据将严格保密，仅用于研究分析，您可以随时关闭页面退出。"
+    )
     name = st.text_input("姓名")
     student_id = st.text_input("学号")
     consent = st.checkbox("我已阅读任务说明，自愿参加，并同意本地记录本次实验数据。")
@@ -406,6 +415,7 @@ def render_intro() -> None:
 def render_letter_practice_intro() -> None:
     st.title("第一部分：字母记忆练习")
     st.write("屏幕会依次呈现字母。请记住它们出现的顺序，随后在 4×3 字母矩阵中按顺序点击回忆。")
+    st.write("本阶段包含 5 组练习：前 2 组每组 2 个字母，后 3 组每组 3 个字母。")
     if st.button("开始字母练习", use_container_width=True):
         start_letter_set("letter_practice")
         st.rerun()
@@ -700,7 +710,11 @@ def score_recall(block_type: str) -> None:
 
 def advance_after_recall(block_type: str) -> None:
     if block_type == "letter_practice":
-        st.session_state.page = "math_practice_intro"
+        st.session_state.letter_practice_index += 1
+        if st.session_state.letter_practice_index >= len(st.session_state.letter_practice_sets):
+            st.session_state.page = "math_practice_intro"
+        else:
+            start_letter_set("letter_practice")
         return
     if block_type == "integration_practice":
         st.session_state.integration_set_index += 1
