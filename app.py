@@ -801,88 +801,44 @@ def get_sheet_id() -> str | None:
     return None
 
 
-def format_sheet_value(value: Any) -> Any:
-    if value is None:
-        return ""
-    if isinstance(value, bool):
-        return "TRUE" if value else "FALSE"
-    if isinstance(value, (int, float, str)):
-        return value
-    return json.dumps(value, ensure_ascii=False)
-
-
-def records_to_rows(records: list[dict[str, Any]], columns: list[str]) -> list[list[Any]]:
-    return [
-        [format_sheet_value(record.get(column, "")) for column in columns]
-        for record in records
-    ]
-
-
-def get_or_create_worksheet(spreadsheet: Any, title: str, columns: list[str]) -> Any:
-    import gspread
-
+def get_apps_script_webhook_url() -> str | None:
     try:
-        worksheet = spreadsheet.worksheet(title)
-    except gspread.exceptions.WorksheetNotFound:
-        worksheet = spreadsheet.add_worksheet(
-            title=title,
-            rows=max(1000, len(st.session_state.events) + 10),
-            cols=len(columns),
-        )
-        worksheet.append_row(columns)
-        return worksheet
-
-    values = worksheet.get_all_values()
-    if not values:
-        worksheet.append_row(columns)
-        return worksheet
-
-    header = values[0]
-    missing = [column for column in columns if column not in header]
-    if missing:
-        worksheet.update(range_name="1:1", values=[header + missing])
-    return worksheet
+        webhook_url = st.secrets.get("apps_script_webhook_url")
+        if webhook_url:
+            return str(webhook_url)
+        google_sheets = st.secrets.get("google_sheets", {})
+        if isinstance(google_sheets, dict) and google_sheets.get("webhook_url"):
+            return str(google_sheets["webhook_url"])
+    except Exception:
+        return None
+    return None
 
 
 def sync_google_sheets() -> dict[str, Any]:
-    sheet_id = get_sheet_id()
-    if not sheet_id:
+    webhook_url = get_apps_script_webhook_url()
+    if not webhook_url:
         return {
             "enabled": False,
             "success": False,
-            "message": "未配置 Google Sheets，数据仅保存在本地并可下载。",
+            "message": "未配置 Apps Script 收数 URL，数据仅保存在本地并可下载。",
         }
 
     try:
-        import gspread
-        from google.oauth2.service_account import Credentials
+        import requests
 
-        service_account_info = dict(st.secrets["gcp_service_account"])
-        private_key = service_account_info.get("private_key")
-        if isinstance(private_key, str):
-            service_account_info["private_key"] = private_key.replace("\\n", "\n")
-
-        scopes = [
-            "https://www.googleapis.com/auth/spreadsheets",
-            "https://www.googleapis.com/auth/drive",
-        ]
-        credentials = Credentials.from_service_account_info(
-            service_account_info,
-            scopes=scopes,
+        response = requests.post(
+            webhook_url,
+            json={
+                "sheet_id": get_sheet_id(),
+                "summary": st.session_state.summary,
+                "events": st.session_state.events,
+            },
+            timeout=20,
         )
-        client = gspread.authorize(credentials)
-        spreadsheet = client.open_by_key(sheet_id)
-
-        trials_sheet = get_or_create_worksheet(spreadsheet, "trials", TRIAL_COLUMNS)
-        summary_sheet = get_or_create_worksheet(spreadsheet, "summary", SUMMARY_COLUMNS)
-        trials_sheet.append_rows(
-            records_to_rows(st.session_state.events, TRIAL_COLUMNS),
-            value_input_option="USER_ENTERED",
-        )
-        summary_sheet.append_rows(
-            records_to_rows([st.session_state.summary], SUMMARY_COLUMNS),
-            value_input_option="USER_ENTERED",
-        )
+        response.raise_for_status()
+        result = response.json()
+        if not result.get("ok"):
+            raise RuntimeError(result.get("error", "Apps Script 返回未知错误"))
         return {
             "enabled": True,
             "success": True,

@@ -30,7 +30,7 @@ streamlit run app.py
 - `data/*_trials.json`
 - `data/*_summary.json`
 
-如果配置了 Google Sheets，应用还会自动写入两个工作表：
+如果配置了 Google Apps Script 收数 URL，应用还会自动写入两个工作表：
 
 - `trials`：trial-level 数据
 - `summary`：每名学生一行的总分数据
@@ -45,12 +45,19 @@ streamlit run app.py
 
 学生只需要打开网址完成任务，不需要安装 Python，也不需要访问 GitHub 仓库。
 
-## 配置 Google Sheets 收集数据
+## 配置 Google Sheets 收集数据（不需要 Google Cloud 付款方式）
 
 1. 新建一个 Google Sheet，用于收集数据。
-2. 在 Google Cloud 创建 service account，并生成 JSON key。
-3. 把 Google Sheet 分享给 service account 的 `client_email`，权限设为 Editor。
-4. 在 Streamlit Cloud 的 App settings -> Secrets 中粘贴配置。
+2. 在 Google Sheet 中打开 Extensions -> Apps Script。
+3. 删除默认内容，把 `google_apps_script.gs` 的全部内容粘进去。
+4. 保存脚本。
+5. 点 Deploy -> New deployment。
+6. 类型选择 Web app。
+7. Execute as 选择 Me。
+8. Who has access 选择 Anyone。
+9. 点 Deploy，并授权。
+10. 复制 Web app URL。
+11. 在 Streamlit Cloud 的 App settings -> Secrets 中粘贴配置。
 
 Secrets 模板见：
 
@@ -62,18 +69,7 @@ Secrets 模板见：
 
 ```toml
 google_sheet_id = "你的 Google Sheet ID"
-
-[gcp_service_account]
-type = "service_account"
-project_id = "..."
-private_key_id = "..."
-private_key = "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-client_email = "..."
-client_id = "..."
-auth_uri = "https://accounts.google.com/o/oauth2/auth"
-token_uri = "https://oauth2.googleapis.com/token"
-auth_provider_x509_cert_url = "https://www.googleapis.com/oauth2/v1/certs"
-client_x509_cert_url = "..."
+apps_script_webhook_url = "你的 Apps Script Web app URL"
 ```
 
 ## 发给学生的话术
