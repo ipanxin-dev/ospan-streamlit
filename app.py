@@ -383,12 +383,10 @@ def render_intro() -> None:
     st.subheader("记忆与注意力任务")
     st.write("本任务用于测量您的记忆与注意力。您需要同时进行简单的数学判断，并记忆出现的字母顺序。")
     st.info("请按照要求完成任务，不要猜测正确答案。正式实验中数学正确率应保持在 85% 或以上。")
-    with st.form("participant_form"):
-        name = st.text_input("姓名")
-        student_id = st.text_input("学号")
-        consent = st.checkbox("我已阅读任务说明，自愿参加，并同意本地记录本次实验数据。")
-        submitted = st.form_submit_button("开始任务", use_container_width=True)
-    if submitted:
+    name = st.text_input("姓名")
+    student_id = st.text_input("学号")
+    consent = st.checkbox("我已阅读任务说明，自愿参加，并同意本地记录本次实验数据。")
+    if st.button("开始任务", use_container_width=True):
         if not name.strip() or not student_id.strip():
             st.error("请填写姓名和学号。")
             return
