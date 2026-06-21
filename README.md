@@ -6,7 +6,7 @@
 
 - 首页填写姓名、学号，阅读简介和伦理说明
 - 字母记忆练习
-- 数学判断练习，并计算个人数学时间上限：平均 RT + 2.5 SD
+- 数学判断练习，并在后台计算个人数学作答时间上限
 - 双任务整合练习
 - 正式实验：set size 3-7，每个 set size 3 个 set，共 75 道数学题和 75 个字母
 - 输出 OSPAN score、Total correct、Math errors、Speed errors、Accuracy errors

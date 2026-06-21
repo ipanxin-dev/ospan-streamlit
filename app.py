@@ -137,6 +137,7 @@ def init_session() -> None:
         "saved_paths": None,
         "sync_status": None,
         "summary": None,
+        "practice_feedback": None,
         "math_limit_sec": DEFAULT_MATH_LIMIT_SEC,
         "math_practice_rts": [],
         "math_practice_items": [],
@@ -207,6 +208,7 @@ def build_experiment() -> None:
     st.session_state.saved_paths = None
     st.session_state.sync_status = None
     st.session_state.summary = None
+    st.session_state.practice_feedback = None
     st.session_state.math_practice_rts = []
     st.session_state.math_limit_sec = DEFAULT_MATH_LIMIT_SEC
     st.session_state.math_practice_items = [generate_math_item() for _ in range(8)]
@@ -458,10 +460,17 @@ def render_math_problem(block_type: str) -> None:
     item = st.session_state.current_math_item
     if block_type in {"integration_practice", "formal"}:
         show_progress(block_type)
-    st.markdown("<div class='center-note'>请尽快计算，算好后点击继续。</div>", unsafe_allow_html=True)
-    st.markdown(f"<div class='math-problem'>{item['expression']} = ?</div>", unsafe_allow_html=True)
-    if block_type != "math_practice":
-        st.caption(f"本阶段数学时间上限：{st.session_state.math_limit_sec:.2f} 秒")
+    if block_type == "integration_practice":
+        st.markdown("<div class='center-note'>请尽快计算。</div>", unsafe_allow_html=True)
+    else:
+        st.markdown("<div class='center-note'>请尽快计算，算好后点击继续。</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='math-problem'>{item['expression']} =</div>", unsafe_allow_html=True)
+    if block_type == "integration_practice":
+        time.sleep(1.2)
+        st.session_state.pending_calc_ms = elapsed_ms(st.session_state.math_start)
+        st.session_state.judge_start = time.perf_counter()
+        st.session_state.page = "integration_judge"
+        st.rerun()
     if st.button("我算好了", use_container_width=True):
         calc_ms = elapsed_ms(st.session_state.math_start)
         if block_type != "math_practice" and calc_ms > st.session_state.math_limit_sec * 1000:
@@ -481,8 +490,8 @@ def render_math_problem(block_type: str) -> None:
 
 def render_math_judge(block_type: str) -> None:
     item = st.session_state.current_math_item
-    st.markdown("<div class='center-note'>判断下面的结果是否正确。</div>", unsafe_allow_html=True)
-    st.markdown(f"<div class='math-problem'>{item['expression']} = {item['shown']}</div>", unsafe_allow_html=True)
+    st.markdown("<div class='center-note'>判断刚才算式的结果是否正确。</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='math-problem'>{item['shown']}</div>", unsafe_allow_html=True)
     col1, col2 = st.columns(2)
     with col1:
         true_clicked = st.button("True / 正确", use_container_width=True)
@@ -490,6 +499,7 @@ def render_math_judge(block_type: str) -> None:
         false_clicked = st.button("False / 错误", use_container_width=True)
     if true_clicked or false_clicked:
         response = true_clicked
+        accuracy = bool(response) == bool(item["is_true"])
         calc_ms = st.session_state.pending_calc_ms or 0
         judge_ms = elapsed_ms(st.session_state.judge_start)
         total_ms = calc_ms + judge_ms
@@ -497,12 +507,22 @@ def render_math_judge(block_type: str) -> None:
         if block_type == "math_practice":
             st.session_state.math_practice_rts.append(calc_ms)
             st.session_state.math_practice_index += 1
-            if st.session_state.math_practice_index >= len(st.session_state.math_practice_items):
-                st.session_state.math_limit_sec = calculate_math_limit()
-                st.session_state.page = "math_practice_done"
-            else:
-                st.session_state.current_math_item = None
-                st.session_state.page = "math_practice_problem"
+            st.session_state.practice_feedback = {
+                "correct": accuracy,
+                "message": "回答正确" if accuracy else "回答错误",
+                "next": "math_practice_next",
+                "auto": False,
+            }
+            st.session_state.page = "practice_feedback"
+        elif block_type == "integration_practice":
+            st.session_state.practice_feedback = {
+                "correct": accuracy,
+                "message": "回答正确" if accuracy else "回答错误",
+                "next": "after_math",
+                "block_type": block_type,
+                "auto": True,
+            }
+            st.session_state.page = "practice_feedback"
         else:
             advance_after_math(block_type)
         st.rerun()
@@ -579,6 +599,26 @@ def render_integration_letter(block_type: str) -> None:
             )
     st.markdown(f"<div class='center-note'>请记住第 {idx + 1} / {current['set_size']} 个字母。</div>", unsafe_allow_html=True)
     st.markdown(f"<div class='stimulus-letter'>{letter}</div>", unsafe_allow_html=True)
+    if block_type == "integration_practice":
+        time.sleep(1.1)
+        append_event(
+            block_type=block_type,
+            condition="letter",
+            set_id=current["set_id"],
+            set_size=current["set_size"],
+            item_index=idx + 1,
+            stimulus=letter,
+            rt_ms=elapsed_ms(st.session_state.letter_start),
+        )
+        st.session_state.letter_start = None
+        if idx + 1 >= current["set_size"]:
+            st.session_state.recall_response = []
+            st.session_state.recall_start = time.perf_counter()
+            st.session_state.page = f"{block_type}_recall"
+        else:
+            st.session_state.integration_item_index += 1
+            st.session_state.page = "integration_math"
+        st.rerun()
     if st.button("继续", use_container_width=True):
         append_event(
             block_type=block_type,
@@ -607,7 +647,6 @@ def render_integration_letter(block_type: str) -> None:
 def render_math_practice_intro() -> None:
     st.title("第二部分：数学练习")
     st.write("您会看到简单数学题。请尽快计算，点击进入下一屏，然后判断给出的结果 True / False。")
-    st.write("练习结束后，系统会用您的平均解题时间 + 2.5 个标准差，作为之后阶段的时间上限。")
     if st.button("开始数学练习", use_container_width=True):
         start_practice_math()
         st.rerun()
@@ -615,19 +654,57 @@ def render_math_practice_intro() -> None:
 
 def render_math_practice_done() -> None:
     st.title("数学练习完成")
-    rts = st.session_state.math_practice_rts
-    avg = statistics.mean(rts) / 1000 if rts else DEFAULT_MATH_LIMIT_SEC
-    sd = statistics.stdev(rts) / 1000 if len(rts) > 1 else 0.0
-    st.success(f"之后阶段的数学时间上限为 {st.session_state.math_limit_sec:.2f} 秒。")
-    st.write(f"练习平均 RT：{avg:.2f} 秒；标准差：{sd:.2f} 秒。")
+    st.success("练习已完成。")
     if st.button("进入双任务整合练习", use_container_width=True):
         st.session_state.page = "integration_intro"
         st.rerun()
 
 
+def advance_practice_feedback() -> None:
+    feedback = st.session_state.practice_feedback or {}
+    next_step = feedback.get("next")
+    if next_step == "math_practice_next":
+        if st.session_state.math_practice_index >= len(st.session_state.math_practice_items):
+            st.session_state.math_limit_sec = calculate_math_limit()
+            st.session_state.page = "math_practice_done"
+        else:
+            st.session_state.current_math_item = None
+            st.session_state.page = "math_practice_problem"
+    elif next_step == "after_math":
+        advance_after_math(feedback.get("block_type", "integration_practice"))
+    elif next_step == "after_recall":
+        advance_after_recall(feedback.get("block_type", "letter_practice"))
+    else:
+        st.session_state.page = "intro"
+    st.session_state.practice_feedback = None
+
+
+def render_practice_feedback() -> None:
+    feedback = st.session_state.practice_feedback
+    if not feedback:
+        st.session_state.page = "intro"
+        st.rerun()
+
+    if feedback.get("correct"):
+        st.success(feedback.get("message", "正确"))
+    else:
+        st.error(feedback.get("message", "错误"))
+    if feedback.get("detail"):
+        st.write(feedback["detail"])
+
+    if feedback.get("auto"):
+        time.sleep(0.8)
+        advance_practice_feedback()
+        st.rerun()
+
+    if st.button("继续", use_container_width=True):
+        advance_practice_feedback()
+        st.rerun()
+
+
 def render_integration_intro() -> None:
     st.title("第三部分：双任务整合练习")
-    st.write("接下来会在数学计算与字母记忆之间切换。数学题超出个人时间上限会记为超时错误。")
+    st.write("接下来会在数学计算与字母记忆之间切换。请快速且准确地完成判断，并记住出现的字母。")
     if st.button("开始整合练习", use_container_width=True):
         start_letter_set("integration_practice")
         st.rerun()
@@ -635,7 +712,7 @@ def render_integration_intro() -> None:
 
 def render_formal_intro() -> None:
     st.title("正式实验")
-    st.write("正式实验包含 set size 3-7，每个 set size 3 个 set。请保持数学正确率不低于 85%。")
+    st.write("正式实验包含 set size 3-7，每个 set size 3 个 set。请继续快速且准确地完成判断，并记住出现的字母。")
     st.warning("正式实验开始后请尽量连续完成，中途不要离开页面。")
     if st.button("开始正式实验", use_container_width=True):
         start_letter_set("formal")
@@ -677,12 +754,23 @@ def render_recall(block_type: str) -> None:
             st.rerun()
     with col3:
         if st.button("提交回忆", type="primary", use_container_width=True):
-            score_recall(block_type)
-            advance_after_recall(block_type)
+            recall_result = score_recall(block_type)
+            if block_type in {"letter_practice", "integration_practice"}:
+                st.session_state.practice_feedback = {
+                    "correct": recall_result["set_perfect"],
+                    "message": "回忆正确" if recall_result["set_perfect"] else "回忆错误",
+                    "detail": f"正确位置：{recall_result['correct_positions']} / {recall_result['set_size']}",
+                    "next": "after_recall",
+                    "block_type": block_type,
+                    "auto": False,
+                }
+                st.session_state.page = "practice_feedback"
+            else:
+                advance_after_recall(block_type)
             st.rerun()
 
 
-def score_recall(block_type: str) -> None:
+def score_recall(block_type: str) -> dict[str, Any]:
     current = get_active_set(block_type)
     target = current["letters"]
     response = st.session_state.recall_response[:]
@@ -706,6 +794,11 @@ def score_recall(block_type: str) -> None:
         set_perfect=set_perfect,
     )
     st.session_state.recall_start = None
+    return {
+        "set_perfect": set_perfect,
+        "correct_positions": correct_positions,
+        "set_size": len(target),
+    }
 
 
 def advance_after_recall(block_type: str) -> None:
@@ -957,6 +1050,8 @@ def main() -> None:
         render_math_judge("math_practice")
     elif page == "math_practice_done":
         render_math_practice_done()
+    elif page == "practice_feedback":
+        render_practice_feedback()
     elif page == "integration_intro":
         render_integration_intro()
     elif page == "integration_math":
