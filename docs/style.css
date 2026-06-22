@@ -1,0 +1,258 @@
+:root {
+  color-scheme: light;
+  --ink: #202431;
+  --muted: #586174;
+  --line: #d7dbe3;
+  --panel: #f6f7f9;
+  --accent: #1769e0;
+  --accent-dark: #0e4da8;
+  --good: #167a3d;
+  --bad: #b42318;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: #ffffff;
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  letter-spacing: 0;
+}
+
+.jspsych-display-element {
+  background: #ffffff;
+}
+
+.jspsych-content-wrapper {
+  align-items: center;
+}
+
+.jspsych-content {
+  width: min(920px, calc(100vw - 40px));
+  max-width: 920px;
+}
+
+.screen {
+  text-align: left;
+  line-height: 1.65;
+}
+
+.screen h1 {
+  margin: 0 0 20px;
+  font-size: 34px;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.screen h2 {
+  margin: 0 0 18px;
+  font-size: 28px;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
+.screen p {
+  margin: 10px 0;
+  font-size: 18px;
+}
+
+.notice {
+  margin-top: 22px;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.center {
+  text-align: center;
+}
+
+.stimulus-letter {
+  text-align: center;
+  font-size: 112px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 56px 0;
+  color: #272b38;
+}
+
+.math-problem {
+  text-align: center;
+  font-size: 54px;
+  font-weight: 760;
+  line-height: 1.2;
+  padding: 56px 0 34px;
+  color: #272b38;
+}
+
+.note {
+  min-height: 32px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+
+.key-hint {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  max-width: 560px;
+  margin: 12px auto 0;
+}
+
+.key {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px 16px;
+  background: var(--panel);
+  font-size: 18px;
+  text-align: center;
+}
+
+.recall-shell {
+  max-width: 620px;
+  margin: 0 auto;
+}
+
+.recall-box {
+  min-height: 54px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 12px 16px;
+  font-size: 28px;
+  font-weight: 750;
+  text-align: center;
+  letter-spacing: 0;
+}
+
+.letter-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.recall-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr 2fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+button,
+.jspsych-btn,
+input[type="submit"] {
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+button:hover,
+.jspsych-btn:hover,
+input[type="submit"]:hover {
+  border-color: #9aa3b4;
+}
+
+.primary,
+input[type="submit"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+.primary:hover,
+input[type="submit"]:hover {
+  background: var(--accent-dark);
+  border-color: var(--accent-dark);
+}
+
+.form-row {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.form-row label {
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.form-row input {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 17px;
+}
+
+.consent {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 18px 0;
+  font-size: 16px;
+}
+
+.feedback-good {
+  color: var(--good);
+  font-size: 28px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.feedback-bad {
+  color: var(--bad);
+  font-size: 28px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.download-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #ffffff;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+@media (max-width: 640px) {
+  .jspsych-content {
+    width: min(100vw - 28px, 920px);
+  }
+
+  .screen h1 {
+    font-size: 28px;
+  }
+
+  .screen h2 {
+    font-size: 24px;
+  }
+
+  .stimulus-letter {
+    font-size: 86px;
+    padding: 44px 0;
+  }
+
+  .math-problem {
+    font-size: 38px;
+  }
+}

@@ -1,6 +1,8 @@
-# 中文 A-OSPAN Streamlit 部署版
+# A-OSPAN jsPsych / Streamlit 部署版
 
-这是一个中文 Automated Operation Span Task（A-OSPAN）Streamlit 应用。它可以本地运行，也可以部署到 Streamlit Community Cloud 后发给学生远程完成。
+这是一个中文 Automated Operation Span Task（A-OSPAN）项目。正式收数建议使用 `docs/` 里的 jsPsych 静态网页版本；原 Streamlit 应用仍保留为本地预览和备份。
+
+jsPsych 版本更适合涉及反应时的研究，因为刺激呈现、按键记录和 trial 时间控制主要发生在被试自己的浏览器里，不依赖 Streamlit 的服务端 rerun。
 
 ## 功能
 
@@ -13,7 +15,46 @@
 - 保存 trial-level CSV / JSON
 - 可选：自动同步到 Google Sheets，集中收集所有学生数据
 
+## 推荐部署：GitHub Pages + jsPsych
+
+本仓库的 `docs/` 目录是静态 jsPsych 实验页，可以直接用 GitHub Pages 发布。
+
+1. 打开 GitHub 仓库 Settings。
+2. 进入 Pages。
+3. Source 选择 Deploy from a branch。
+4. Branch 选择 `main`，Folder 选择 `/docs`。
+5. 保存后等待 GitHub 生成 Pages 链接。
+
+发布后，学生只需要打开 GitHub Pages 链接完成任务。结束时数据会通过 Google Apps Script 写入 Google Sheet。
+
+jsPsych 版已内置当前 Google Apps Script Web App URL：
+
+```text
+https://script.google.com/macros/s/AKfycbzX8-SBD26liMvlSB0uci0coLEydmJU9VFwpIwpdp8yG0cmy3v0tOVKHnvVmFvbHqeL6Q/exec
+```
+
+如果以后重新部署 Apps Script，需要同步修改：
+
+```text
+docs/experiment.js
+```
+
 ## 本地运行
+
+### jsPsych 静态版
+
+```bash
+cd docs
+python3 -m http.server 8765
+```
+
+然后打开：
+
+```text
+http://localhost:8765/
+```
+
+### Streamlit 备用版
 
 ```bash
 pip install -r requirements.txt
@@ -35,7 +76,7 @@ streamlit run app.py
 - `trials`：trial-level 数据
 - `summary`：每名学生一行的总分数据
 
-## GitHub + Streamlit Cloud 部署
+## 备用部署：Streamlit Cloud
 
 1. 在 GitHub 创建一个仓库，例如 `ospan-streamlit`。
 2. 把本文件夹内所有文件推送到仓库。
