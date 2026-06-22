@@ -314,59 +314,86 @@ function mathJudgeTrial(item, blockType, set, itemIndex, options = {}) {
   let lastCorrect = false;
   const hasTimeout = options.timeout === true;
   let keyListener = null;
+  let timeoutId = null;
   return {
-    type: jsPsychHtmlButtonResponse,
+    type: jsPsychHtmlKeyboardResponse,
     stimulus: `
       <div class="note">判断刚才算式的结果是否正确。</div>
       <div class="math-problem">${escapeHtml(item.shown)}</div>
+      <div class="math-choice-row">
+        <button type="button" id="math-false" class="math-choice">F = False / 错误</button>
+        <button type="button" id="math-true" class="math-choice">J = True / 正确</button>
+      </div>
     `,
-    choices: ["F = False / 错误", "J = True / 正确"],
-    trial_duration: hasTimeout ? () => Math.round(mathLimitSec * 1000) : null,
-    response_ends_trial: true,
-    on_finish: (data) => {
-      if (keyListener) {
-        document.removeEventListener("keydown", keyListener);
-        keyListener = null;
-      }
-      const timedOut = data.response === null;
-      const response = data.response === 1;
-      const rt = timedOut ? Math.round(mathLimitSec * 1000) : Math.round(FORMULA_DURATION_MS + data.rt);
-      lastCorrect = scoreMath(item, response, timedOut);
-      if (blockType === "math_practice" && !timedOut) {
-        mathPracticeRts.push(rt);
-      }
-      appendEvent({
-        block_type: blockType,
-        condition: "math",
-        set_id: set ? set.set_id : "math_practice",
-        set_size: set ? set.set_size : "",
-        item_index: itemIndex,
-        stimulus: `${item.expression} = ${item.shown}`,
-        response: timedOut ? "TIMEOUT" : response,
-        correct_response: item.isTrue,
-        accuracy: lastCorrect,
-        rt_ms: rt,
-        timed_out: timedOut,
-        math_expression: item.expression,
-        math_answer: item.answer,
-        math_shown: item.shown,
-      });
-    },
+    choices: "NO_KEYS",
+    response_ends_trial: false,
     on_load: () => {
+      const started = performance.now();
+      let finished = false;
+      const cleanup = () => {
+        if (keyListener) {
+          document.removeEventListener("keydown", keyListener);
+          keyListener = null;
+        }
+        if (timeoutId) {
+          window.clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+      };
+      const finishMathTrial = (response, timedOut = false) => {
+        if (finished) {
+          return;
+        }
+        finished = true;
+        cleanup();
+        const judgeMs = Math.round(performance.now() - started);
+        const rt = timedOut ? Math.round(mathLimitSec * 1000) : Math.round(FORMULA_DURATION_MS + judgeMs);
+        lastCorrect = scoreMath(item, response, timedOut);
+        if (blockType === "math_practice" && !timedOut) {
+          mathPracticeRts.push(rt);
+        }
+        appendEvent({
+          block_type: blockType,
+          condition: "math",
+          set_id: set ? set.set_id : "math_practice",
+          set_size: set ? set.set_size : "",
+          item_index: itemIndex,
+          stimulus: `${item.expression} = ${item.shown}`,
+          response: timedOut ? "TIMEOUT" : response,
+          correct_response: item.isTrue,
+          accuracy: lastCorrect,
+          rt_ms: rt,
+          timed_out: timedOut,
+          math_expression: item.expression,
+          math_answer: item.answer,
+          math_shown: item.shown,
+        });
+        jsPsych.finishTrial({
+          response: timedOut ? null : response,
+          rt_ms: rt,
+          timed_out: timedOut,
+        });
+      };
       mathJudgeTrial.lastCorrect = () => lastCorrect;
-      const buttons = Array.from(document.querySelectorAll(".jspsych-btn"));
+      const falseButton = document.querySelector("#math-false");
+      const trueButton = document.querySelector("#math-true");
+      falseButton.addEventListener("click", () => finishMathTrial(false, false));
+      trueButton.addEventListener("click", () => finishMathTrial(true, false));
       keyListener = (event) => {
         const key = event.key.toLowerCase();
-        if (key === "f" && buttons[0]) {
+        if (key === "f") {
           event.preventDefault();
-          buttons[0].click();
+          finishMathTrial(false, false);
         }
-        if (key === "j" && buttons[1]) {
+        if (key === "j") {
           event.preventDefault();
-          buttons[1].click();
+          finishMathTrial(true, false);
         }
       };
       document.addEventListener("keydown", keyListener);
+      if (hasTimeout) {
+        timeoutId = window.setTimeout(() => finishMathTrial(null, true), Math.round(mathLimitSec * 1000));
+      }
     },
   };
 }
