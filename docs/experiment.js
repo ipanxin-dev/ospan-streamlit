@@ -166,11 +166,10 @@ function appendEvent(row) {
   });
 }
 
-function scoreMath(item, responseKey, timedOut) {
+function scoreMath(item, response, timedOut) {
   if (timedOut) {
     return false;
   }
-  const response = responseKey === "j";
   return response === item.isTrue;
 }
 
@@ -314,23 +313,25 @@ function formulaTrial(item, blockType, set, itemIndex) {
 function mathJudgeTrial(item, blockType, set, itemIndex, options = {}) {
   let lastCorrect = false;
   const hasTimeout = options.timeout === true;
+  let keyListener = null;
   return {
-    type: jsPsychHtmlKeyboardResponse,
+    type: jsPsychHtmlButtonResponse,
     stimulus: `
       <div class="note">判断刚才算式的结果是否正确。</div>
       <div class="math-problem">${escapeHtml(item.shown)}</div>
-      <div class="key-hint">
-        <div class="key">F = False / 错误</div>
-        <div class="key">J = True / 正确</div>
-      </div>
     `,
-    choices: ["f", "j"],
+    choices: ["F = False / 错误", "J = True / 正确"],
     trial_duration: hasTimeout ? () => Math.round(mathLimitSec * 1000) : null,
     response_ends_trial: true,
     on_finish: (data) => {
+      if (keyListener) {
+        document.removeEventListener("keydown", keyListener);
+        keyListener = null;
+      }
       const timedOut = data.response === null;
+      const response = data.response === 1;
       const rt = timedOut ? Math.round(mathLimitSec * 1000) : Math.round(FORMULA_DURATION_MS + data.rt);
-      lastCorrect = scoreMath(item, data.response, timedOut);
+      lastCorrect = scoreMath(item, response, timedOut);
       if (blockType === "math_practice" && !timedOut) {
         mathPracticeRts.push(rt);
       }
@@ -341,7 +342,7 @@ function mathJudgeTrial(item, blockType, set, itemIndex, options = {}) {
         set_size: set ? set.set_size : "",
         item_index: itemIndex,
         stimulus: `${item.expression} = ${item.shown}`,
-        response: timedOut ? "TIMEOUT" : data.response === "j",
+        response: timedOut ? "TIMEOUT" : response,
         correct_response: item.isTrue,
         accuracy: lastCorrect,
         rt_ms: rt,
@@ -353,6 +354,19 @@ function mathJudgeTrial(item, blockType, set, itemIndex, options = {}) {
     },
     on_load: () => {
       mathJudgeTrial.lastCorrect = () => lastCorrect;
+      const buttons = Array.from(document.querySelectorAll(".jspsych-btn"));
+      keyListener = (event) => {
+        const key = event.key.toLowerCase();
+        if (key === "f" && buttons[0]) {
+          event.preventDefault();
+          buttons[0].click();
+        }
+        if (key === "j" && buttons[1]) {
+          event.preventDefault();
+          buttons[1].click();
+        }
+      };
+      document.addEventListener("keydown", keyListener);
     },
   };
 }
