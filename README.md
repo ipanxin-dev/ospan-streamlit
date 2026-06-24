@@ -75,6 +75,56 @@ classroom_data/
 OSPAN_ADMIN_PASSWORD=你的密码 python3 classroom_server.py
 ```
 
+### 飞书多维表格收数版（大陆远程推荐）
+
+如果学生不在同一个局域网，但又无法稳定访问 Google Sheets，可以把 `/submit` 后端部署到阿里云、腾讯云等大陆可访问服务器，并让它写入飞书多维表格。
+
+飞书写表需要后端持有密钥，不能把 `app_secret` 写进前端网页。后端读取这些环境变量：
+
+```bash
+FEISHU_APP_ID=cli_xxx
+FEISHU_APP_SECRET=xxx
+FEISHU_APP_TOKEN=bascnxxx
+FEISHU_SUMMARY_TABLE_ID=tblxxx
+FEISHU_TRIALS_TABLE_ID=tblxxx
+FEISHU_RAW_TABLE_ID=tblxxx
+```
+
+其中：
+
+- `FEISHU_APP_ID` / `FEISHU_APP_SECRET`：飞书开放平台自建应用的凭据
+- `FEISHU_APP_TOKEN`：多维表格 URL 里的 app token，通常以 `bascn...` 开头
+- `FEISHU_SUMMARY_TABLE_ID`：summary 表的 table id
+- `FEISHU_TRIALS_TABLE_ID`：trial 明细表的 table id，可选但建议配置
+- `FEISHU_RAW_TABLE_ID`：原始 JSON 备份表，可选
+
+飞书多维表格中字段名需要和本项目的列名一致。summary 表字段见 `SUMMARY_COLUMNS`，trials 表字段见 `TRIAL_COLUMNS`，都在 `classroom_server.py` 里。
+
+后端启动示例：
+
+```bash
+FEISHU_APP_ID=cli_xxx \
+FEISHU_APP_SECRET=xxx \
+FEISHU_APP_TOKEN=bascnxxx \
+FEISHU_SUMMARY_TABLE_ID=tblxxx \
+FEISHU_TRIALS_TABLE_ID=tblxxx \
+python3 classroom_server.py
+```
+
+如果后端公网地址是：
+
+```text
+https://你的域名.example.com/submit
+```
+
+给学生的实验链接可以写成：
+
+```text
+https://ipanxin-dev.github.io/ospan-streamlit/?submit=https%3A%2F%2F你的域名.example.com%2Fsubmit
+```
+
+这样学生打开 GitHub Pages 实验页，完成后数据会提交到你的大陆后端，再由后端写入飞书多维表格。
+
 ### jsPsych 静态版
 
 ```bash

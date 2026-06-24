@@ -8,6 +8,7 @@ import socket
 import threading
 import time
 import urllib.parse
+import urllib.request
 import zipfile
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -26,6 +27,13 @@ EXPORT_ZIP = DATA_DIR / "ospan_classroom_data.zip"
 HOST = os.environ.get("OSPAN_HOST", "0.0.0.0")
 PORT = int(os.environ.get("OSPAN_PORT", "8765"))
 ADMIN_PASSWORD = os.environ.get("OSPAN_ADMIN_PASSWORD", "ospan-admin")
+FEISHU_APP_ID = os.environ.get("FEISHU_APP_ID", "")
+FEISHU_APP_SECRET = os.environ.get("FEISHU_APP_SECRET", "")
+FEISHU_APP_TOKEN = os.environ.get("FEISHU_APP_TOKEN", "")
+FEISHU_SUMMARY_TABLE_ID = os.environ.get("FEISHU_SUMMARY_TABLE_ID", "")
+FEISHU_TRIALS_TABLE_ID = os.environ.get("FEISHU_TRIALS_TABLE_ID", "")
+FEISHU_RAW_TABLE_ID = os.environ.get("FEISHU_RAW_TABLE_ID", "")
+FEISHU_API_BASE = os.environ.get("FEISHU_API_BASE", "https://open.feishu.cn/open-apis")
 
 TRIAL_COLUMNS = [
     "timestamp",
@@ -70,6 +78,7 @@ SUMMARY_COLUMNS = [
 ]
 
 write_lock = threading.Lock()
+feishu_token_cache: dict[str, Any] = {"token": "", "expires_at": 0.0}
 
 
 def local_ip() -> str:
@@ -117,7 +126,121 @@ def append_many_csv(path: Path, columns: list[str], rows: list[dict[str, Any]]) 
             writer.writerow({column: format_value(row.get(column, "")) for column in columns})
 
 
-def save_payload(payload: dict[str, Any]) -> dict[str, int]:
+def feishu_enabled() -> bool:
+    return bool(
+        FEISHU_APP_ID
+        and FEISHU_APP_SECRET
+        and FEISHU_APP_TOKEN
+        and FEISHU_SUMMARY_TABLE_ID
+    )
+
+
+def request_json(url: str, payload: dict[str, Any], headers: dict[str, str] | None = None) -> dict[str, Any]:
+    body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    request = urllib.request.Request(
+        url,
+        data=body,
+        headers={
+            "Content-Type": "application/json; charset=utf-8",
+            **(headers or {}),
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=20) as response:
+        response_body = response.read().decode("utf-8")
+    data = json.loads(response_body)
+    if data.get("code", 0) != 0:
+        raise RuntimeError(f"Feishu API error: {data}")
+    return data
+
+
+def get_feishu_tenant_access_token() -> str:
+    now = time.time()
+    cached_token = str(feishu_token_cache.get("token") or "")
+    if cached_token and float(feishu_token_cache.get("expires_at") or 0) > now + 60:
+        return cached_token
+
+    data = request_json(
+        f"{FEISHU_API_BASE}/auth/v3/tenant_access_token/internal",
+        {
+            "app_id": FEISHU_APP_ID,
+            "app_secret": FEISHU_APP_SECRET,
+        },
+    )
+    token = data.get("tenant_access_token")
+    if not token:
+        raise RuntimeError(f"Feishu token missing: {data}")
+    expire = int(data.get("expire", 7200))
+    feishu_token_cache["token"] = token
+    feishu_token_cache["expires_at"] = now + expire
+    return str(token)
+
+
+def feishu_field_value(value: Any) -> Any:
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "TRUE" if value else "FALSE"
+    if isinstance(value, (int, float, str)):
+        return value
+    return json.dumps(value, ensure_ascii=False)
+
+
+def feishu_fields(row: dict[str, Any], columns: list[str]) -> dict[str, Any]:
+    return {column: feishu_field_value(row.get(column, "")) for column in columns}
+
+
+def feishu_batch_create(table_id: str, rows: list[dict[str, Any]], columns: list[str]) -> int:
+    if not rows:
+        return 0
+    token = get_feishu_tenant_access_token()
+    url = f"{FEISHU_API_BASE}/bitable/v1/apps/{FEISHU_APP_TOKEN}/tables/{table_id}/records/batch_create"
+    total = 0
+    for start in range(0, len(rows), 500):
+        chunk = rows[start : start + 500]
+        request_json(
+            url,
+            {"records": [{"fields": feishu_fields(row, columns)} for row in chunk]},
+            {"Authorization": f"Bearer {token}"},
+        )
+        total += len(chunk)
+    return total
+
+
+def feishu_push_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    if not feishu_enabled():
+        return {"enabled": False}
+
+    summary = payload.get("summary") or {}
+    events = [row for row in payload.get("events") or [] if isinstance(row, dict)]
+    if not isinstance(summary, dict):
+        raise ValueError("summary must be an object")
+
+    result = {
+        "enabled": True,
+        "summary_rows": feishu_batch_create(FEISHU_SUMMARY_TABLE_ID, [summary], SUMMARY_COLUMNS),
+        "trial_rows": 0,
+        "raw_rows": 0,
+    }
+    if FEISHU_TRIALS_TABLE_ID:
+        result["trial_rows"] = feishu_batch_create(FEISHU_TRIALS_TABLE_ID, events, TRIAL_COLUMNS)
+    if FEISHU_RAW_TABLE_ID:
+        raw_row = {
+            "participant_name": summary.get("participant_name", ""),
+            "participant_id": summary.get("participant_id", ""),
+            "started_at": summary.get("started_at", ""),
+            "finished_at": summary.get("finished_at", ""),
+            "payload_json": json.dumps(payload, ensure_ascii=False),
+        }
+        result["raw_rows"] = feishu_batch_create(
+            FEISHU_RAW_TABLE_ID,
+            [raw_row],
+            ["participant_name", "participant_id", "started_at", "finished_at", "payload_json"],
+        )
+    return result
+
+
+def save_payload(payload: dict[str, Any]) -> dict[str, Any]:
     ensure_data_dir()
     summary = payload.get("summary") or {}
     events = payload.get("events") or []
@@ -137,7 +260,9 @@ def save_payload(payload: dict[str, Any]) -> dict[str, int]:
         append_csv(SUMMARY_CSV, SUMMARY_COLUMNS, summary)
         append_many_csv(TRIALS_CSV, TRIAL_COLUMNS, [row for row in events if isinstance(row, dict)])
 
-    return {"summary_rows": 1, "trial_rows": len(events)}
+    result = {"summary_rows": 1, "trial_rows": len(events)}
+    feishu_result = feishu_push_payload(payload)
+    return {**result, "feishu": feishu_result}
 
 
 def admin_page(message: str = "") -> bytes:

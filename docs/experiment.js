@@ -2,6 +2,7 @@ const CONFIG = {
   sheetId: "1mGkQ_qQWpy4tt9ag-DZ_z0rw4qDe8FL3ACPRasQr38c",
   webhookUrl: "https://script.google.com/macros/s/AKfycbzX8-SBD26liMvlSB0uci0coLEydmJU9VFwpIwpdp8yG0cmy3v0tOVKHnvVmFvbHqeL6Q/exec",
   githubPagesHost: "ipanxin-dev.github.io",
+  submitUrl: "",
 };
 
 const LETTERS = ["F", "H", "J", "K", "L", "N", "P", "Q", "R", "S", "T", "Y"];
@@ -236,9 +237,35 @@ function isLocalClassroomMode() {
   return window.location.protocol.startsWith("http") && window.location.hostname !== CONFIG.githubPagesHost;
 }
 
+function configuredSubmitUrl() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("submit") || CONFIG.submitUrl || "";
+}
+
 async function submitData() {
   summary = computeSummary();
   const payload = getPayload();
+  const remoteSubmitUrl = configuredSubmitUrl();
+
+  if (remoteSubmitUrl) {
+    try {
+      const response = await fetch(remoteSubmitUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json;charset=utf-8",
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        throw new Error(`remote submit failed: ${response.status}`);
+      }
+      saveState = "数据已提交到指定收数服务器。";
+      return;
+    } catch (error) {
+      saveState = `指定收数服务器提交失败：${error.message}`;
+      return;
+    }
+  }
 
   if (isLocalClassroomMode()) {
     try {
