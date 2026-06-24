@@ -84,7 +84,7 @@ OSPAN_ADMIN_PASSWORD=你的密码 python3 classroom_server.py
 ```bash
 FEISHU_APP_ID=cli_xxx
 FEISHU_APP_SECRET=xxx
-FEISHU_APP_TOKEN=bascnxxx
+FEISHU_APP_TOKEN=NPfdbUXN6adhjus8CCecSQhhnsh
 FEISHU_SUMMARY_TABLE_ID=tblxxx
 FEISHU_TRIALS_TABLE_ID=tblxxx
 FEISHU_RAW_TABLE_ID=tblxxx
@@ -93,29 +93,26 @@ FEISHU_RAW_TABLE_ID=tblxxx
 其中：
 
 - `FEISHU_APP_ID` / `FEISHU_APP_SECRET`：飞书开放平台自建应用的凭据
-- `FEISHU_APP_TOKEN`：多维表格 URL 里的 app token，通常以 `bascn...` 开头
+- `FEISHU_APP_TOKEN`：多维表格 URL 里的 app token
 - `FEISHU_SUMMARY_TABLE_ID`：summary 表的 table id
 - `FEISHU_TRIALS_TABLE_ID`：trial 明细表的 table id，可选但建议配置
 - `FEISHU_RAW_TABLE_ID`：原始 JSON 备份表，可选
 
-当前已提供的飞书多维表格链接：
+当前飞书多维表格：
 
 ```text
-https://acnorht52pcm.feishu.cn/base/NPfdbUXN6adhjus8CCecSQhhnsh?table=tblB1DeSNPyT1mIn&view=vew6hWno6N
+https://acnorht52pcm.feishu.cn/base/NPfdbUXN6adhjus8CCecSQhhnsh
 ```
 
-可解析为：
+已经建好的数据表：
 
 ```bash
 FEISHU_APP_TOKEN=NPfdbUXN6adhjus8CCecSQhhnsh
-FEISHU_SUMMARY_TABLE_ID=tblB1DeSNPyT1mIn
+FEISHU_SUMMARY_TABLE_ID=tblrZndJ9x8lISGt
+FEISHU_TRIALS_TABLE_ID=tbl2T97s0dC29dsZ
 ```
 
-如果只配置上面这个表，后端会把每名学生一行的总分数据写入飞书。若要保存每个 trial 的反应时和明细，请在同一个多维表格里再新建一个 `trials` 表，并把它的 `table_id` 填到：
-
-```bash
-FEISHU_TRIALS_TABLE_ID=tblxxx
-```
+如果只配置 summary 表，后端会把每名学生一行的总分数据写入飞书。配置 trials 表后，后端也会保存每个 trial 的反应时和明细。
 
 飞书多维表格中字段名需要和本项目的列名一致。summary 表字段见 `SUMMARY_COLUMNS`，trials 表字段见 `TRIAL_COLUMNS`，都在 `classroom_server.py` 里。
 
@@ -171,8 +168,8 @@ math_shown
 FEISHU_APP_ID=cli_xxx \
 FEISHU_APP_SECRET=xxx \
 FEISHU_APP_TOKEN=NPfdbUXN6adhjus8CCecSQhhnsh \
-FEISHU_SUMMARY_TABLE_ID=tblB1DeSNPyT1mIn \
-FEISHU_TRIALS_TABLE_ID=tblxxx \
+FEISHU_SUMMARY_TABLE_ID=tblrZndJ9x8lISGt \
+FEISHU_TRIALS_TABLE_ID=tbl2T97s0dC29dsZ \
 python3 classroom_server.py
 ```
 
