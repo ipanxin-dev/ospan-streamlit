@@ -232,13 +232,15 @@ function getPayload() {
   };
 }
 
+function isLocalClassroomMode() {
+  return window.location.protocol.startsWith("http") && window.location.hostname !== CONFIG.githubPagesHost;
+}
+
 async function submitData() {
   summary = computeSummary();
   const payload = getPayload();
-  const isLocalClassroom =
-    window.location.protocol.startsWith("http") && window.location.hostname !== CONFIG.githubPagesHost;
 
-  if (isLocalClassroom) {
+  if (isLocalClassroomMode()) {
     try {
       const response = await fetch("/submit", {
         method: "POST",
@@ -684,6 +686,9 @@ function createTimeline() {
     stimulus: () => {
       const url = dataDownloadUrl();
       const stateText = saveState || "自动提交可能失败，请下载备用数据。";
+      const adminLink = isLocalClassroomMode()
+        ? `<p><a class="download-link secondary-link" href="/admin" target="_blank" rel="noopener">老师管理下载入口</a></p>`
+        : "";
       return `
         <div class="screen center">
           <h1>任务完成</h1>
@@ -691,6 +696,7 @@ function createTimeline() {
           <p>OSPAN score：${summary.ospan_score}</p>
           <p>Total correct：${summary.total_correct}</p>
           <p>Math errors：${summary.math_errors}</p>
+          ${adminLink}
           <p><a class="download-link" href="${url}" download="ospan_${escapeHtml(participant.studentId || "participant")}_${startedAt}.json">下载备用数据</a></p>
           <p class="muted">您可以关闭页面。</p>
         </div>

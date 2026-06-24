@@ -236,6 +236,10 @@ input[type="submit"]:hover {
   text-decoration: none;
 }
 
+.secondary-link {
+  background: #30384a;
+}
+
 @media (max-width: 640px) {
   .jspsych-content {
     width: min(100vw - 28px, 920px);
