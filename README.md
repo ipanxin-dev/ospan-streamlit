@@ -98,15 +98,80 @@ FEISHU_RAW_TABLE_ID=tblxxx
 - `FEISHU_TRIALS_TABLE_ID`：trial 明细表的 table id，可选但建议配置
 - `FEISHU_RAW_TABLE_ID`：原始 JSON 备份表，可选
 
+当前已提供的飞书多维表格链接：
+
+```text
+https://acnorht52pcm.feishu.cn/base/NPfdbUXN6adhjus8CCecSQhhnsh?table=tblB1DeSNPyT1mIn&view=vew6hWno6N
+```
+
+可解析为：
+
+```bash
+FEISHU_APP_TOKEN=NPfdbUXN6adhjus8CCecSQhhnsh
+FEISHU_SUMMARY_TABLE_ID=tblB1DeSNPyT1mIn
+```
+
+如果只配置上面这个表，后端会把每名学生一行的总分数据写入飞书。若要保存每个 trial 的反应时和明细，请在同一个多维表格里再新建一个 `trials` 表，并把它的 `table_id` 填到：
+
+```bash
+FEISHU_TRIALS_TABLE_ID=tblxxx
+```
+
 飞书多维表格中字段名需要和本项目的列名一致。summary 表字段见 `SUMMARY_COLUMNS`，trials 表字段见 `TRIAL_COLUMNS`，都在 `classroom_server.py` 里。
+
+summary 表字段需要包含：
+
+```text
+participant_name
+participant_id
+started_at
+finished_at
+ospan_score
+total_correct
+math_errors
+speed_errors
+accuracy_errors
+math_accuracy_percent
+duration_sec
+math_limit_sec
+trial_count
+```
+
+trials 表字段需要包含：
+
+```text
+timestamp
+participant_name
+participant_id
+trial_index
+block_type
+condition
+set_id
+set_size
+item_index
+stimulus
+response
+correct_response
+accuracy
+rt_ms
+timed_out
+recall_target
+recall_response
+recall_correct_positions
+set_perfect
+math_limit_sec
+math_expression
+math_answer
+math_shown
+```
 
 后端启动示例：
 
 ```bash
 FEISHU_APP_ID=cli_xxx \
 FEISHU_APP_SECRET=xxx \
-FEISHU_APP_TOKEN=bascnxxx \
-FEISHU_SUMMARY_TABLE_ID=tblxxx \
+FEISHU_APP_TOKEN=NPfdbUXN6adhjus8CCecSQhhnsh \
+FEISHU_SUMMARY_TABLE_ID=tblB1DeSNPyT1mIn \
 FEISHU_TRIALS_TABLE_ID=tblxxx \
 python3 classroom_server.py
 ```
