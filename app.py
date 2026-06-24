@@ -122,6 +122,15 @@ def inject_style() -> None:
             background: #f9fafb;
         }
         .small-muted { color: #6b7280; font-size: 14px; }
+        .progress-label {
+            color: #4b5563;
+            font-size: 16px;
+            font-weight: 700;
+            line-height: 1.7;
+            padding: 6px 0 8px;
+            margin: 0;
+            overflow: visible;
+        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -337,11 +346,19 @@ def show_progress(block_type: str) -> None:
     if block_type == "formal":
         done = st.session_state.formal_set_index
         total = len(st.session_state.formal_sets)
-        st.progress(done / total, text=f"正式实验进度：{done}/{total} 组")
+        st.markdown(
+            f"<div class='progress-label'>正式实验进度：{done}/{total} 组</div>",
+            unsafe_allow_html=True,
+        )
+        st.progress(done / total)
     elif block_type == "integration_practice":
         done = st.session_state.integration_set_index
         total = len(st.session_state.integration_sets)
-        st.progress(done / total, text=f"整合练习：{done}/{total} 组")
+        st.markdown(
+            f"<div class='progress-label'>整合练习：{done}/{total} 组</div>",
+            unsafe_allow_html=True,
+        )
+        st.progress(done / total)
 
 
 def start_math(block_type: str) -> None:
