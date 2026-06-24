@@ -41,6 +41,40 @@ docs/experiment.js
 
 ## 本地运行
 
+### 本地课堂收数版（大陆课堂推荐）
+
+如果课堂里学生无法稳定访问 Google Sheets，可以在老师电脑上启动本地课堂服务器。学生和老师电脑需要连接同一个 Wi-Fi。
+
+```bash
+python3 classroom_server.py
+```
+
+终端会显示类似：
+
+```text
+学生访问: http://192.168.1.23:8765/
+老师管理: http://192.168.1.23:8765/admin
+老师密码: ospan-admin
+```
+
+把“学生访问”链接发给学生。学生完成实验后，数据会直接保存到老师电脑的：
+
+```text
+classroom_data/
+```
+
+老师打开“老师管理”链接，输入密码后可以下载：
+
+- `summary.csv`：每名学生一行的总分数据
+- `trials.csv`：trial-level 明细数据
+- `ospan_classroom_data.zip`：包含 CSV 和每名学生原始 JSON 的完整备份
+
+建议正式课堂前修改老师密码：
+
+```bash
+OSPAN_ADMIN_PASSWORD=你的密码 python3 classroom_server.py
+```
+
 ### jsPsych 静态版
 
 ```bash
@@ -70,6 +104,12 @@ streamlit run app.py
 - `data/*_trials.csv`
 - `data/*_trials.json`
 - `data/*_summary.json`
+
+本地课堂服务器完成后会生成：
+
+- `classroom_data/summary.csv`
+- `classroom_data/trials.csv`
+- `classroom_data/payloads/*.json`
 
 如果配置了 Google Apps Script 收数 URL，应用还会自动写入两个工作表：
 

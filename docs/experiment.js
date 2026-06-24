@@ -1,6 +1,7 @@
 const CONFIG = {
   sheetId: "1mGkQ_qQWpy4tt9ag-DZ_z0rw4qDe8FL3ACPRasQr38c",
   webhookUrl: "https://script.google.com/macros/s/AKfycbzX8-SBD26liMvlSB0uci0coLEydmJU9VFwpIwpdp8yG0cmy3v0tOVKHnvVmFvbHqeL6Q/exec",
+  githubPagesHost: "ipanxin-dev.github.io",
 };
 
 const LETTERS = ["F", "H", "J", "K", "L", "N", "P", "Q", "R", "S", "T", "Y"];
@@ -234,6 +235,29 @@ function getPayload() {
 async function submitData() {
   summary = computeSummary();
   const payload = getPayload();
+  const isLocalClassroom =
+    window.location.protocol.startsWith("http") && window.location.hostname !== CONFIG.githubPagesHost;
+
+  if (isLocalClassroom) {
+    try {
+      const response = await fetch("/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json;charset=utf-8",
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        throw new Error(`local submit failed: ${response.status}`);
+      }
+      saveState = "本地课堂服务器已保存数据。";
+      return;
+    } catch (error) {
+      saveState = `本地提交失败：${error.message}`;
+      return;
+    }
+  }
+
   try {
     await fetch(CONFIG.webhookUrl, {
       method: "POST",
@@ -243,9 +267,9 @@ async function submitData() {
       },
       body: JSON.stringify(payload),
     });
-    saveState = "sent";
+    saveState = "Google Sheets 提交请求已发送。";
   } catch (error) {
-    saveState = `failed: ${error.message}`;
+    saveState = `Google Sheets 提交失败：${error.message}`;
   }
 }
 
@@ -659,7 +683,7 @@ function createTimeline() {
     type: jsPsychHtmlKeyboardResponse,
     stimulus: () => {
       const url = dataDownloadUrl();
-      const stateText = saveState === "sent" ? "数据提交请求已发送。" : "自动提交可能失败，请下载备用数据。";
+      const stateText = saveState || "自动提交可能失败，请下载备用数据。";
       return `
         <div class="screen center">
           <h1>任务完成</h1>
