@@ -5,6 +5,7 @@ import html
 import json
 import os
 import socket
+import ssl
 import threading
 import time
 import urllib.parse
@@ -77,8 +78,41 @@ SUMMARY_COLUMNS = [
     "trial_count",
 ]
 
+FEISHU_NUMBER_COLUMNS = {
+    "trial_index",
+    "set_id",
+    "set_size",
+    "item_index",
+    "accuracy",
+    "rt_ms",
+    "recall_correct_positions",
+    "math_limit_sec",
+    "math_answer",
+    "math_shown",
+    "ospan_score",
+    "total_correct",
+    "math_errors",
+    "speed_errors",
+    "accuracy_errors",
+    "math_accuracy_percent",
+    "duration_sec",
+    "trial_count",
+}
+
 write_lock = threading.Lock()
 feishu_token_cache: dict[str, Any] = {"token": "", "expires_at": 0.0}
+
+
+def ssl_context() -> ssl.SSLContext | None:
+    cert_file = os.environ.get("SSL_CERT_FILE", "")
+    if not cert_file and Path("/etc/ssl/cert.pem").exists():
+        cert_file = "/etc/ssl/cert.pem"
+    if not cert_file:
+        return None
+    return ssl.create_default_context(cafile=cert_file)
+
+
+SSL_CONTEXT = ssl_context()
 
 
 def local_ip() -> str:
@@ -146,7 +180,7 @@ def request_json(url: str, payload: dict[str, Any], headers: dict[str, str] | No
         },
         method="POST",
     )
-    with urllib.request.urlopen(request, timeout=20) as response:
+    with urllib.request.urlopen(request, timeout=20, context=SSL_CONTEXT) as response:
         response_body = response.read().decode("utf-8")
     data = json.loads(response_body)
     if data.get("code", 0) != 0:
@@ -186,8 +220,33 @@ def feishu_field_value(value: Any) -> Any:
     return json.dumps(value, ensure_ascii=False)
 
 
+def feishu_number_value(value: Any) -> int | float | None:
+    if value in (None, ""):
+        return None
+    if isinstance(value, bool):
+        return 1 if value else 0
+    if isinstance(value, (int, float)):
+        return value
+    text = str(value).strip()
+    try:
+        number = float(text)
+    except ValueError:
+        return None
+    return int(number) if number.is_integer() else number
+
+
 def feishu_fields(row: dict[str, Any], columns: list[str]) -> dict[str, Any]:
-    return {column: feishu_field_value(row.get(column, "")) for column in columns}
+    fields: dict[str, Any] = {}
+    for column in columns:
+        value = row.get(column, "")
+        if column in FEISHU_NUMBER_COLUMNS:
+            number_value = feishu_number_value(value)
+            if number_value is None:
+                continue
+            fields[column] = number_value
+            continue
+        fields[column] = feishu_field_value(value)
+    return fields
 
 
 def feishu_batch_create(table_id: str, rows: list[dict[str, Any]], columns: list[str]) -> int:
