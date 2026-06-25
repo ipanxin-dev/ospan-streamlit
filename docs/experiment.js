@@ -308,12 +308,55 @@ function dataDownloadUrl() {
   return URL.createObjectURL(blob);
 }
 
+function addSpaceContinueListener() {
+  const handler = (event) => {
+    const isSpace = event.code === "Space" || event.key === " ";
+    if (!isSpace) {
+      return;
+    }
+    const target = event.target;
+    const isTyping =
+      target &&
+      (target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.tagName === "SELECT" ||
+        target.isContentEditable);
+    if (isTyping) {
+      return;
+    }
+    const button = document.querySelector(".jspsych-btn");
+    if (!button) {
+      return;
+    }
+    event.preventDefault();
+    button.click();
+  };
+  document.addEventListener("keydown", handler);
+  return () => document.removeEventListener("keydown", handler);
+}
+
+function spaceContinueHandlers() {
+  let removeSpaceListener = null;
+  return {
+    on_load: () => {
+      removeSpaceListener = addSpaceContinueListener();
+    },
+    on_finish: () => {
+      if (removeSpaceListener) {
+        removeSpaceListener();
+        removeSpaceListener = null;
+      }
+    },
+  };
+}
+
 function instruction(title, body, button = "继续") {
   return {
     type: jsPsychHtmlButtonResponse,
-    stimulus: `<div class="screen"><h2>${title}</h2>${body}</div>`,
+    stimulus: `<div class="screen"><h2>${title}</h2>${body}<p class="muted">点击“${button}”或按空格键继续。</p></div>`,
     choices: [button],
     record_data: false,
+    ...spaceContinueHandlers(),
   };
 }
 
@@ -324,7 +367,7 @@ function feedbackTrial(isCorrect, detail = "", auto = false) {
       <div class="screen center">
         <div class="${isCorrect() ? "feedback-good" : "feedback-bad"}">${isCorrect() ? "回答正确" : "回答错误"}</div>
         ${detailText ? `<p>${detailText}</p>` : ""}
-        ${auto ? "" : "<p class='muted'>点击继续。</p>"}
+        ${auto ? "" : "<p class='muted'>点击继续，或按空格键继续。</p>"}
       </div>
     `;
   };
@@ -334,6 +377,7 @@ function feedbackTrial(isCorrect, detail = "", auto = false) {
       stimulus,
       choices: ["继续"],
       record_data: false,
+      ...spaceContinueHandlers(),
     };
   }
   return {
